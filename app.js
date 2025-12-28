@@ -1,8 +1,8 @@
-console.log("APP.JS JALAN");
+console.log("APP.JS JALAN - Live Radar");
 
 // Firebase SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -19,53 +19,58 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const chatRef = ref(db, "chat");
+const usersRef = ref(db, "users");
 
 // Generate anonymous ID
 const userID = "Ping#" + Math.floor(Math.random() * 9000 + 1000);
 
-// Array untuk menyimpan titik orang
+// Get radar container
+const radar = document.querySelector(".radar");
 let radarDots = [];
 
-// Fungsi PING → detect orang
-window.sendPing = function () {
-  const status = document.getElementById("status");
-  const chatBox = document.getElementById("chatBox");
-  const radar = document.querySelector(".radar");
+// Fungsi update posisi user sendiri secara random di radar
+function updateUserPosition() {
+  const angle = Math.random() * 2 * Math.PI;
+  const radius = Math.random() * 90 + 20; 
+  const x = 50 + radius * Math.cos(angle) / 1.1; 
+  const y = 50 + radius * Math.sin(angle) / 1.1;
+  
+  set(ref(db, `users/${userID}`), {
+    x, y,
+    lastActive: Date.now()
+  });
+}
+setInterval(updateUserPosition, 3000); // update tiap 3 detik
 
-  // Simulasi deteksi 1-5 orang
-  const detectedCount = Math.floor(Math.random() * 5) + 1;
-
-  // Clear sebelumnya
+// Fungsi render semua user di radar
+onValue(usersRef, (snapshot) => {
+  // Hapus titik radar sebelumnya
   radarDots.forEach(dot => radar.removeChild(dot));
   radarDots = [];
 
-  if (detectedCount > 0) {
-    status.innerText = `📡 ${detectedCount} orang terdeteksi!`;
+  snapshot.forEach(userSnap => {
+    const userData = userSnap.val();
+    if (userSnap.key === userID) return; // skip diri sendiri
+
+    const dot = document.createElement("div");
+    dot.classList.add("dot");
+    dot.style.left = `${userData.x}%`;
+    dot.style.top = `${userData.y}%`;
+
+    radar.appendChild(dot);
+    radarDots.push(dot);
+  });
+
+  // Chat box muncul jika ada user dalam radius ~10–20m (simulasi)
+  const chatBox = document.getElementById("chatBox");
+  if (radarDots.length > 0) {
     chatBox.classList.remove("hidden");
     radar.classList.add("detected");
-
-    for (let i = 0; i < detectedCount; i++) {
-      const dot = document.createElement("div");
-      dot.classList.add("dot");
-
-      // Posisi random dalam radar (circle radius)
-      const angle = Math.random() * 2 * Math.PI;
-      const radius = Math.random() * 90 + 20; // jarak 20–110px dari center
-      const x = 50 + radius * Math.cos(angle) / 1.1; // persentase
-      const y = 50 + radius * Math.sin(angle) / 1.1; // persentase
-
-      dot.style.left = `${x}%`;
-      dot.style.top = `${y}%`;
-
-      radar.appendChild(dot);
-      radarDots.push(dot);
-    }
   } else {
-    status.innerText = "❌ Tidak ada orang di sekitar";
     chatBox.classList.add("hidden");
     radar.classList.remove("detected");
   }
-};
+});
 
 // Kirim pesan
 window.sendMessage = function () {
