@@ -1,25 +1,43 @@
-const dots = document.querySelectorAll(".dot");
+const firebaseConfig = {
+  apiKey: "AIzaSyCnmYG0cZsv52GmMRxjJPPuWmIyNpr4xww",
+  authDomain: "ping-id-chat.firebaseapp.com",
+  databaseURL: "https://ping-id-chat-578b6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ping-id-chat",
+  storageBucket: "ping-id-chat.firebasestorage.app",
+  messagingSenderId: "1034233458438",
+  appId: "1:1034233458438:web:0c14b3dd9765cdb8a73887"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const database = firebase.database();
+const chatRef = database.ref("chat");
+
 const chatBox = document.getElementById("chatBox");
 const messages = document.getElementById("messages");
-const statusText = document.getElementById("status");
+const userId = "Ping#" + Math.floor(Math.random() * 10000);
 
-dots.forEach(dot => {
-  dot.addEventListener("click", () => {
-    chatBox.classList.remove("hidden");
-    messages.innerHTML += `<div>👤 Orang anonim terhubung</div>`;
-    statusText.innerText = "💬 Terhubung dengan orang di sekitar";
-  });
+document.querySelector(".dot").addEventListener("click", () => {
+  chatBox.classList.remove("hidden");
 });
 
 function sendMessage() {
   const input = document.getElementById("msgInput");
-  if (input.value.trim() === "") return;
+  if (!input.value.trim()) return;
 
-  messages.innerHTML += `<div>🧑 Kamu: ${input.value}</div>`;
+  chatRef.push({
+    user: userId,
+    text: input.value,
+    time: Date.now()
+  });
+
   input.value = "";
-
-  setTimeout(() => {
-    messages.innerHTML += `<div>👤 Anonim: halo 👀</div>`;
-    messages.scrollTop = messages.scrollHeight;
-  }, 1000);
 }
+
+chatRef.limitToLast(20).on("child_added", snapshot => {
+  const data = snapshot.val();
+  const div = document.createElement("div");
+  div.textContent = `${data.user}: ${data.text}`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+});
