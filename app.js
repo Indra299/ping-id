@@ -1,4 +1,5 @@
 console.log("APP.JS JALAN");
+
 // Firebase SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -18,13 +19,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Chat reference
+// Database reference
 const chatRef = ref(db, "chat");
 
-// Kirim pesan
+// TOMBOL PING
+window.sendPing = function () {
+  document.getElementById("status").innerText = "📡 Orang terdeteksi!";
+  document.getElementById("chatBox").classList.remove("hidden");
+};
+
+// KIRIM PESAN
 window.sendMessage = function () {
   const input = document.getElementById("msgInput");
-  if (input.value.trim() === "") return;
+  if (!input.value.trim()) return;
 
   push(chatRef, {
     msg: input.value,
@@ -34,8 +41,11 @@ window.sendMessage = function () {
   input.value = "";
 };
 
-// Terima pesan realtime
+// TERIMA PESAN REALTIME
 onChildAdded(chatRef, (snapshot) => {
+  const chatBox = document.getElementById("chatBox");
+  chatBox.classList.remove("hidden");
+
   const messages = document.getElementById("messages");
   const data = snapshot.val();
 
