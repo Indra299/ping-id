@@ -1,4 +1,4 @@
-console.log("APP.JS JALAN - GPS RADAR");
+console.log("APP.JS JALAN - GPS RADAR REAL");
 
 // =========================
 // FIREBASE
@@ -42,7 +42,7 @@ let myLng = null;
 let dots = [];
 
 // =========================
-// GPS
+// GPS REAL
 // =========================
 navigator.geolocation.watchPosition(
   pos => {
@@ -55,7 +55,7 @@ navigator.geolocation.watchPosition(
       lastActive: Date.now()
     });
   },
-  err => console.error(err),
+  err => console.error("GPS ERROR:", err),
   { enableHighAccuracy: true }
 );
 
@@ -68,21 +68,21 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
   const dLon = (lon2 - lon1) * Math.PI / 180;
 
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // =========================
-// METER → PIXEL
+// METER → PIXEL RADAR
 // =========================
-function meterToPixel(m) {
+function meterToPixel(meter) {
   const MAX_METER = 20;
-  const MAX_PIXEL = 110;
-  return (Math.min(m, MAX_METER) / MAX_METER) * MAX_PIXEL;
+  const MAX_PIXEL = 130; // radius radar (260 / 2)
+  return (Math.min(meter, MAX_METER) / MAX_METER) * MAX_PIXEL;
 }
 
 // =========================
@@ -93,7 +93,7 @@ onValue(usersRef, snap => {
   dots = [];
 
   let count = 0;
-  const center = 110;
+  const center = 130;
 
   snap.forEach(u => {
     if (u.key === myID) return;
@@ -102,15 +102,16 @@ onValue(usersRef, snap => {
     if (!data.lat || !data.lng || !myLat || !myLng) return;
 
     const jarak = hitungJarak(myLat, myLng, data.lat, data.lng);
+    console.log("JARAK:", jarak.toFixed(2), "meter");
 
     if (jarak <= 20) {
       count++;
 
       const angle = Math.random() * Math.PI * 2;
-      const r = meterToPixel(jarak);
+      const radius = meterToPixel(jarak);
 
-      const x = center + Math.cos(angle) * r;
-      const y = center + Math.sin(angle) * r;
+      const x = center + Math.cos(angle) * radius;
+      const y = center + Math.sin(angle) * radius;
 
       const dot = document.createElement("div");
       dot.className = "dot";
@@ -127,7 +128,7 @@ onValue(usersRef, snap => {
 });
 
 // =========================
-// CHAT
+// CHAT REALTIME
 // =========================
 window.sendMessage = function () {
   const input = document.getElementById("msgInput");
