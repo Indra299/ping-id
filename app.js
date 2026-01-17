@@ -1,8 +1,8 @@
-console.log("APP.JS JALAN - Live Radar");
+console.log("PingIDX Radar Aktif");
 
 // Firebase SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -18,59 +18,64 @@ const firebaseConfig = {
 // Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const chatRef = ref(db, "chat");
+
 const usersRef = ref(db, "users");
+const chatRef = ref(db, "chat");
+
 // ID user anonim
-const userId = "u_" + Math.random().toString(36).slice(2);
+const myID = "Ping#" + Math.floor(Math.random() * 9000 + 1000);
 
-// Generate anonymous ID
-const userID = "Ping#" + Math.floor(Math.random() * 9000 + 1000);
-
-// Get radar container
+// Radar
 const radar = document.querySelector(".radar");
-let radarDots = [];
+const nearbyCount = document.getElementById("nearbyCount");
+const chatBox = document.getElementById("chatBox");
 
-// Fungsi update posisi user sendiri secara random di radar
-function updateUserPosition() {
-  const angle = Math.random() * 2 * Math.PI;
-  const radius = Math.random() * 90 + 20; 
-  const x = 50 + radius * Math.cos(angle) / 1.1; 
-  const y = 50 + radius * Math.sin(angle) / 1.1;
-  
-  set(ref(db, `users/${userID}`), {
-    x, y,
+let dots = [];
+
+// Update posisi user (simulasi GPS)
+function updateMyPosition() {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = Math.random() * 40; // radius radar
+  const x = 50 + Math.cos(angle) * radius;
+  const y = 50 + Math.sin(angle) * radius;
+
+  set(ref(db, `users/${myID}`), {
+    x,
+    y,
     lastActive: Date.now()
   });
 }
-setInterval(updateUserPosition, 3000); // update tiap 3 detik
 
-// Fungsi render semua user di radar
+setInterval(updateMyPosition, 3000);
+updateMyPosition();
+
+// Render radar user terdekat
 onValue(usersRef, (snapshot) => {
-  // Hapus titik radar sebelumnya
-  radarDots.forEach(dot => radar.removeChild(dot));
-  radarDots = [];
+  dots.forEach(d => d.remove());
+  dots = [];
+
+  let count = 0;
 
   snapshot.forEach(userSnap => {
-    const userData = userSnap.val();
-    if (userSnap.key === userID) return; // skip diri sendiri
+    if (userSnap.key === myID) return;
 
+    const user = userSnap.val();
     const dot = document.createElement("div");
-    dot.classList.add("dot");
-    dot.style.left = `${userData.x}%`;
-    dot.style.top = `${userData.y}%`;
+    dot.className = "dot";
+    dot.style.left = user.x + "%";
+    dot.style.top = user.y + "%";
 
     radar.appendChild(dot);
-    radarDots.push(dot);
+    dots.push(dot);
+    count++;
   });
 
-  // Chat box muncul jika ada user dalam radius ~10–20m (simulasi)
-  const chatBox = document.getElementById("chatBox");
-  if (radarDots.length > 0) {
+  nearbyCount.textContent = `📍 ${count} orang terdeteksi`;
+
+  if (count > 0) {
     chatBox.classList.remove("hidden");
-    radar.classList.add("detected");
   } else {
     chatBox.classList.add("hidden");
-    radar.classList.remove("detected");
   }
 });
 
@@ -80,23 +85,22 @@ window.sendMessage = function () {
   if (!input.value.trim()) return;
 
   push(chatRef, {
+    user: myID,
     msg: input.value,
-    user: userID,
     time: Date.now()
   });
 
   input.value = "";
 };
 
-// Terima pesan realtime
-onChildAdded(chatRef, (snapshot) => {
-  const chatBox = document.getElementById("chatBox");
-  chatBox.classList.remove("hidden");
-
-  const messages = document.getElementById("messages");
-  const data = snapshot.val();
+// Terima pesan
+onChildAdded(chatRef, (snap) => {
+  const data = snap.val();
+  const msgBox = document.getElementById("messages");
 
   const div = document.createElement("div");
   div.textContent = `${data.user}: ${data.msg}`;
-  messages.appendChild(div);
+  msgBox.appendChild(div);
+
+  msgBox.scrollTop = msgBox.scrollHeight;
 });
