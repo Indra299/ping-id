@@ -1,26 +1,8 @@
-let myLat = null;
-let myLng = null;
+console.log("APP.JS JALAN - GPS RADAR");
 
-navigator.geolocation.watchPosition(
-  (pos) => {
-    myLat = pos.coords.latitude;
-    myLng = pos.coords.longitude;
-
-    // update ke Firebase
-    set(ref(db, `users/${userID}`), {
-      lat: myLat,
-      lng: myLng,
-      lastActive: Date.now()
-    });
-  },
-  (err) => {
-    console.error("GPS ERROR", err);
-  },
-  { enableHighAccuracy: true }
-);
-console.log("PingIDX GPS REAL AKTIF");
-
-// Firebase SDK
+// =========================
+// FIREBASE
+// =========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getDatabase,
@@ -31,7 +13,6 @@ import {
   onChildAdded
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCnmYG0cZsv52GmMRxjPPuWmIyNpr4xww",
   authDomain: "ping-id-chat.firebaseapp.com",
@@ -42,103 +23,94 @@ const firebaseConfig = {
   appId: "1:1034233458438:web:0c14b3dd9765cdb8a73887"
 };
 
-// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// =========================
+// GLOBAL
+// =========================
+const myID = "Ping#" + Math.floor(Math.random() * 9000 + 1000);
 const usersRef = ref(db, "users");
 const chatRef = ref(db, "chat");
 
-// User anonim
-const myID = "Ping#" + Math.floor(Math.random() * 9000 + 1000);
-
-// UI
 const radar = document.querySelector(".radar");
-const nearbyCount = document.getElementById("nearbyCount");
 const chatBox = document.getElementById("chatBox");
+const nearbyCount = document.getElementById("nearbyCount");
 
+let myLat = null;
+let myLng = null;
 let dots = [];
-let myLocation = null;
 
 // =========================
-// GPS LOCATION
+// GPS
 // =========================
-function getLocation() {
-  if (!navigator.geolocation) {
-    alert("Browser tidak mendukung GPS");
-    return;
-  }
+navigator.geolocation.watchPosition(
+  pos => {
+    myLat = pos.coords.latitude;
+    myLng = pos.coords.longitude;
 
-  navigator.geolocation.watchPosition(
-    (pos) => {
-      myLocation = {
-        lat: pos.coords.latitude,
-        lon: pos.coords.longitude
-      };
-
-      set(ref(db, `users/${myID}`), {
-        lat: myLocation.lat,
-        lon: myLocation.lon,
-        lastActive: Date.now()
-      });
-    },
-    () => alert("Izin lokasi ditolak"),
-    { enableHighAccuracy: true }
-  );
-}
-
-getLocation();
+    set(ref(db, `users/${myID}`), {
+      lat: myLat,
+      lng: myLng,
+      lastActive: Date.now()
+    });
+  },
+  err => console.error(err),
+  { enableHighAccuracy: true }
+);
 
 // =========================
 // HITUNG JARAK (METER)
 // =========================
-function distanceMeter(lat1, lon1, lat2, lon2) {
-  const R = 6371000; // meter
+function hitungJarak(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
 
   const a =
-    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // =========================
-// RADAR REAL 20 METER
+// METER → PIXEL
 // =========================
-onValue(usersRef, (snapshot) => {
+function meterToPixel(m) {
+  const MAX_METER = 20;
+  const MAX_PIXEL = 110;
+  return (Math.min(m, MAX_METER) / MAX_METER) * MAX_PIXEL;
+}
+
+// =========================
+// RADAR REALTIME
+// =========================
+onValue(usersRef, snap => {
   dots.forEach(d => d.remove());
   dots = [];
 
-  if (!myLocation) return;
-
   let count = 0;
+  const center = 110;
 
-  snapshot.forEach(userSnap => {
-    if (userSnap.key === myID) return;
+  snap.forEach(u => {
+    if (u.key === myID) return;
 
-    const u = userSnap.val();
-    if (!u.lat || !u.lon) return;
+    const data = u.val();
+    if (!data.lat || !data.lng || !myLat || !myLng) return;
 
-    const d = distanceMeter(
-      myLocation.lat,
-      myLocation.lon,
-      u.lat,
-      u.lon
-    );
+    const jarak = hitungJarak(myLat, myLng, data.lat, data.lng);
 
-    if (d <= 20) {
+    if (jarak <= 20) {
       count++;
 
-      // Konversi meter → radar
       const angle = Math.random() * Math.PI * 2;
-      const radius = (d / 20) * 120;
+      const r = meterToPixel(jarak);
 
-      const x = 130 + Math.cos(angle) * radius;
-      const y = 130 + Math.sin(angle) * radius;
+      const x = center + Math.cos(angle) * r;
+      const y = center + Math.sin(angle) * r;
 
       const dot = document.createElement("div");
       dot.className = "dot";
@@ -151,7 +123,6 @@ onValue(usersRef, (snapshot) => {
   });
 
   nearbyCount.textContent = `📍 ${count} orang ≤ 20 meter`;
-
   chatBox.classList.toggle("hidden", count === 0);
 });
 
@@ -171,12 +142,12 @@ window.sendMessage = function () {
   input.value = "";
 };
 
-onChildAdded(chatRef, (snap) => {
+onChildAdded(chatRef, snap => {
   const data = snap.val();
-  const msgBox = document.getElementById("messages");
+  const box = document.getElementById("messages");
 
   const div = document.createElement("div");
   div.textContent = `${data.user}: ${data.msg}`;
-  msgBox.appendChild(div);
-  msgBox.scrollTop = msgBox.scrollHeight;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
 });
