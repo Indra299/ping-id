@@ -20,6 +20,8 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const chatRef = ref(db, "chat");
 const usersRef = ref(db, "users");
+// ID user anonim
+const userId = "u_" + Math.random().toString(36).slice(2);
 
 // Generate anonymous ID
 const userID = "Ping#" + Math.floor(Math.random() * 9000 + 1000);
