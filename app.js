@@ -1,4 +1,4 @@
-console.log("APP.JS JALAN - Ping.IDX Modern");
+console.log("APP.JS JALAN - Ping.IDX Modern GPS");
 
 // Firebase SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -30,7 +30,7 @@ const nearbyCount = document.getElementById("nearbyCount");
 const chatBox = document.getElementById("chatBox");
 
 // =========================
-// GPS SIMULASI / REAL
+// GPS REAL
 // =========================
 function updateUserLocation() {
   if (!navigator.geolocation) return;
@@ -39,13 +39,31 @@ function updateUserLocation() {
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
 
+    // Simpan posisi di Firebase
     set(ref(db, `users/${myID}`), {
       lat, lon,
       lastActive: Date.now()
     });
   });
 }
-setInterval(updateUserLocation, 3000); // update tiap 3 detik
+
+// Update lokasi tiap 3 detik
+setInterval(updateUserLocation, 3000);
+
+// =========================
+// HITUNG JARAK (Haversine)
+// =========================
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // meter
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // meter
+}
 
 // =========================
 // RADAR & USER DETECTION
@@ -54,14 +72,19 @@ onValue(usersRef, snap => {
   radarDots.forEach(dot => radar.removeChild(dot));
   radarDots = [];
 
-  let count = 0;
-  snap.forEach(userSnap => {
-    const u = userSnap.val();
-    if (userSnap.key === myID) return;
+  let nearbyUsers = 0;
 
-    // Jarak sederhana simulasi (hanya demo)
-    const distance = Math.random() * 200; // nantinya bisa hitung dari GPS real
-    if (distance <= 200) {
+  snap.forEach(userSnap => {
+    if (userSnap.key === myID) return; // skip diri sendiri
+
+    const u = userSnap.val();
+    const myPos = snap.val()[myID];
+
+    if (!myPos || !u.lat || !u.lon) return;
+
+    const distance = getDistance(myPos.lat, myPos.lon, u.lat, u.lon);
+
+    if (distance <= 200) { // 100–200 meter
       const angle = Math.random() * Math.PI * 2;
       const radius = distance / 2; 
       const x = 130 + Math.cos(angle) * radius;
@@ -75,16 +98,16 @@ onValue(usersRef, snap => {
       radar.appendChild(dot);
       radarDots.push(dot);
 
-      count++;
+      nearbyUsers++;
     }
   });
 
-  nearbyCount.textContent = `📍 ${count} orang ≤ 200 meter`;
-  chatBox.classList.toggle("hidden", count === 0);
+  nearbyCount.textContent = `📍 ${nearbyUsers} orang ≤ 200 meter`;
+  chatBox.classList.toggle("hidden", nearbyUsers === 0);
 });
 
 // =========================
-// CHAT
+// CHAT REALTIME
 // =========================
 window.sendMessage = function () {
   const input = document.getElementById("msgInput");
@@ -108,3 +131,14 @@ onChildAdded(chatRef, snap => {
   msgBox.appendChild(div);
   msgBox.scrollTop = msgBox.scrollHeight;
 });
+
+// =========================
+// PING / NUDGE
+// =========================
+window.sendPing = function() {
+  push(chatRef, {
+    user: myID,
+    msg: "⚡️ Ping!",
+    time: Date.now()
+  });
+};
