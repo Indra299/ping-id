@@ -1,3 +1,23 @@
+let myLat = null;
+let myLng = null;
+
+navigator.geolocation.watchPosition(
+  (pos) => {
+    myLat = pos.coords.latitude;
+    myLng = pos.coords.longitude;
+
+    // update ke Firebase
+    set(ref(db, `users/${userID}`), {
+      lat: myLat,
+      lng: myLng,
+      lastActive: Date.now()
+    });
+  },
+  (err) => {
+    console.error("GPS ERROR", err);
+  },
+  { enableHighAccuracy: true }
+);
 console.log("PingIDX GPS REAL AKTIF");
 
 // Firebase SDK
