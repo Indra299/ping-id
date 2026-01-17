@@ -28,14 +28,11 @@ body {
   animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-  0% { transform: scale(0.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
-}
+@keyframes pulse { 0% { transform: scale(0.2); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
 
 .dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   background: #00ff6a;
   border-radius: 50%;
   position: absolute;
@@ -52,14 +49,18 @@ body {
 .hidden { display: none; }
 
 .chat-header { font-weight: bold; margin-bottom: 5px; }
+
 .messages {
   max-height: 150px;
   overflow-y: auto;
   font-size: 14px;
   text-align: left;
 }
+
 .chat-input { display: flex; gap: 5px; margin-top: 5px; }
+
 .chat-input input { flex: 1; padding: 5px; }
-.chat-input button { background: #00ffe1; border: none; padding: 5px 10px; }
+
+.chat-input button { background: #00ffe1; border: none; padding: 5px 10px; cursor: pointer; }
 
 .note { font-size: 12px; opacity: 0.7; }
