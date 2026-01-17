@@ -13,14 +13,12 @@
   <h1>📡 PingIDX</h1>
 
   <p id="nearbyCount">📍 Mendeteksi orang sekitar...</p>
-  <p id="status">Mencari orang di sekitar...</p>
+  <p id="status">Radar aktif</p>
 
-  <!-- RADAR (DINAMIS) -->
-  <div class="radar" id="radar">
+  <div class="radar">
     <div class="pulse"></div>
   </div>
 
-  <!-- CHAT -->
   <div id="chatBox" class="chat hidden">
     <div class="chat-header">💬 Chat Anonim</div>
     <div id="messages" class="messages"></div>
@@ -30,8 +28,7 @@
     </div>
   </div>
 
-  <button onclick="sendPing()">PING</button>
-  <p class="note">Jangkauan 10–20 meter</p>
+  <p class="note">Jangkauan simulasi ±20 meter</p>
 </div>
 
 <script type="module" src="app.js"></script>
